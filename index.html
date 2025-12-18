@@ -1,3 +1,11 @@
+if (location.protocol === "file:") {
+    alert(
+        "⚠️ Camera & Micro sẽ KHÔNG hoạt động khi mở file trực tiếp.\n\n" +
+        "✔️ Hãy dùng GitHub Pages (https://)\n" +
+        "✔️ Hoặc chạy bằng Live Server / localhost"
+    );
+}
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -7,7 +15,32 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; margin:0; }
+        body
+        <div id="securityNotice" style="
+    position:fixed;
+    bottom:20px;
+    right:20px;
+    max-width:320px;
+    background:#020617;
+    border:1px solid #1e293b;
+    padding:14px 16px;
+    border-radius:14px;
+    font-size:12px;
+    z-index:9999;
+    box-shadow:0 10px 30px rgba(0,0,0,.5)
+">
+    <b class="text-blue-400">🔒 Quyền truy cập thiết bị</b>
+    <p class="mt-1 text-gray-300">
+        Website này <b>KHÔNG lưu dữ liệu</b>.<br>
+        Camera & Micro chỉ dùng để test trực tiếp trên trình duyệt.
+    </p>
+    <button onclick="this.parentElement.remove()"
+        class="mt-2 text-xs text-blue-400 underline">
+        Tôi đã hiểu
+    </button>
+</div>
+
+        { background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; margin:0; }
         .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .nav-item { transition: 0.3s; cursor: pointer; padding: 0.8rem 1.2rem; display: flex; align-items: center; border-radius: 12px; margin-bottom: 0.5rem; font-size: 14px; font-weight: 600; }
         .nav-item:hover { background: rgba(59, 130, 246, 0.2); }
@@ -140,21 +173,68 @@
             if(k) { k.classList.remove('key-pressed'); k.classList.add('key-passed'); }
         };
         function resetKb() { document.querySelectorAll('.key').forEach(k => k.classList.remove('key-passed')); }
-        async function startCam() { const s = await navigator.mediaDevices.getUserMedia({video:true}); document.getElementById('v').srcObject = s; }
-        async function startMic() {
-            const s = await navigator.mediaDevices.getUserMedia({audio:true});
-            const ctx = new AudioContext(); const ana = ctx.createAnalyser();
-            ctx.createMediaStreamSource(s).connect(ana);
-            const data = new Uint8Array(ana.frequencyBinCount);
-            function loop() {
-                ana.getByteFrequencyData(data);
-                let v = Math.round(data.reduce((a,b)=>a+b)/data.length * 3);
-                document.getElementById('m-bar').style.width = Math.min(v, 100) + "%";
-                document.getElementById('m-status').innerText = Math.min(v, 100) + "%";
-                requestAnimationFrame(loop);
-            }
-            loop();
+        async function startCam() {
+    try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert("❌ Trình duyệt không hỗ trợ camera");
+            return;
         }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 1280, height: 720 }
+        });
+
+        const video = document.getElementById("v");
+        video.srcObject = stream;
+
+    } catch (err) {
+        alert(
+            "❌ Không truy cập được camera\n\n" +
+            "• Bạn chưa cấp quyền\n" +
+            "• Camera đang được app khác sử dụng\n" +
+            "• Trình duyệt bị chặn quyền"
+        );
+    }
+}
+
+       async function startMic() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+
+        const source = ctx.createMediaStreamSource(stream);
+        source.connect(analyser);
+
+        const data = new Uint8Array(analyser.frequencyBinCount);
+
+        function loop() {
+            analyser.getByteFrequencyData(data);
+
+            let avg = data.reduce((a, b) => a + b) / data.length;
+            let level = Math.min(Math.round(avg * 2), 100);
+
+            document.getElementById("m-bar").style.width = level + "%";
+            document.getElementById("m-status").innerText = level + "%";
+
+            requestAnimationFrame(loop);
+        }
+
+        loop();
+
+    } catch {
+        alert(
+            "❌ Không truy cập được Microphone\n\n" +
+            "• Bạn chưa cấp quyền\n" +
+            "• Micro đang bị app khác chiếm\n" +
+            "• Trình duyệt bị chặn quyền"
+        );
+    }
+}
+
     </script>
 </body>
+
 </html>
